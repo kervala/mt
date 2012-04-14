@@ -5,11 +5,6 @@
 #include "config.h"
 #ifdef HAVE_REVISION_H
 #include "revision.h"
-#else
-#define VERSION "1.0"
-#define REVISION "0"
-#define AUTHOR "Kervala"
-#define YEAR "2012"
 #endif
 #endif
 
@@ -241,7 +236,11 @@ bool MT::parseParameters(std::vector<std::string> &params)
 
 void MT::printHeader()
 {
-	printInfo("Kervala (R) Manifest Tool version %s (rev %s)", VERSION, REVISION);
+#ifdef REVISION
+	printInfo("Kervala (R) Manifest Tool version %s (rev %s compiled on %s)", VERSION, REVISION, BUILD_DATE);
+#else
+	printInfo("Kervala (R) Manifest Tool version %s", VERSION);
+#endif
 	printInfo("Copyright (c) %s %s", AUTHOR, YEAR);
 	printInfo("All rights reserved.");
 	printInfo("");
