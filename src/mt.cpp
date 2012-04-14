@@ -36,7 +36,7 @@ void join(const std::vector<std::string> &tokens, std::string &str, const std::s
 	}
 }
 
-MT::MT():m_nologo(false), m_id(0), m_log(NULL), m_action(eUsage), m_verbose(false)
+MT::MT():m_nologo(false), m_id(0), m_log(NULL), m_action(eNone), m_verbose(false)
 {
 }
 
@@ -79,6 +79,8 @@ bool MT::parseEnv(std::vector<std::string> &params, const char *name)
 
 bool MT::parseParameters(std::vector<std::string> &params)
 {
+	bool res = true;
+
 	for(size_t i = 0; i < params.size(); ++i)
 	{
 		std::string param = params[i];
@@ -126,7 +128,8 @@ bool MT::parseParameters(std::vector<std::string> &params)
 			}
 			else
 			{
-				printError("Switch %s not implemented", param.c_str());
+				printError("Unexpected/Unknown option \"-%s\".  Use the /? option for help on usage and samples.", param.c_str());
+				res = false;
 			}
 		}
 		else if (param[0] == '@')
@@ -209,12 +212,13 @@ bool MT::parseParameters(std::vector<std::string> &params)
 				if (!m_log)
 				{
 					printError("Unable to access to %s", value.c_str());
-					return false;
+					res = false;
 				}
 			}
 			else
 			{
-				printError("Unkown %s parameter", value.c_str());
+				printError("Unexpected/Unknown option \"%s\".  Use the /? option for help on usage and samples.", value.c_str());
+				res = false;
 			}
 		}
 	}
@@ -227,7 +231,7 @@ bool MT::parseParameters(std::vector<std::string> &params)
 		printDebug("mt.exe %s", res.c_str());
 	}
 
-	return true;
+	return res;
 }
 
 void MT::printHeader()
@@ -573,6 +577,9 @@ bool MT::processAction()
 {
 	switch(m_action)
 	{
+		case eNone:
+		return true;
+
 		case eUsage:
 		printUsage();
 		return true;
