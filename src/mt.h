@@ -6,6 +6,7 @@ class MT
 public:
 	enum actions
 	{
+		eNone,
 		eUsage,
 		eUpdateManifest
 	};
