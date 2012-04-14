@@ -15,7 +15,7 @@ public:
 
 	bool parseCommandLine(std::vector<std::string> &params, int argc, char* argv[]);
 	bool parseEnv(std::vector<std::string> &params, const char *name);
-	bool parseParameters(const std::vector<std::string> &params);
+	bool parseParameters(std::vector<std::string> &params);
 
 	void printHeader();
 	void printUsage();
@@ -30,13 +30,16 @@ public:
 	bool processAction();
 
 private:
+	bool getFileContent(const std::string &filename, std::string &content);
+	bool fixManifest(std::string &manifest);
+
 	bool m_nologo;
 	std::string m_manifest;
 	std::string m_output;
 	int m_id;
 	FILE *m_log;
 	actions m_action;
-	bool m_debug;
+	bool m_verbose;
 };
 
 #endif

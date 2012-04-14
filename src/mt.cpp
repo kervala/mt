@@ -36,7 +36,7 @@ void join(const std::vector<std::string> &tokens, std::string &str, const std::s
 	}
 }
 
-MT::MT():m_nologo(false), m_id(0), m_log(NULL), m_action(eUsage), m_debug(false)
+MT::MT():m_nologo(false), m_id(0), m_log(NULL), m_action(eUsage), m_verbose(false)
 {
 }
 
@@ -77,7 +77,7 @@ bool MT::parseEnv(std::vector<std::string> &params, const char *name)
 	return true;
 }
 
-bool MT::parseParameters(const std::vector<std::string> &params)
+bool MT::parseParameters(std::vector<std::string> &params)
 {
 	for(size_t i = 0; i < params.size(); ++i)
 	{
@@ -120,15 +120,46 @@ bool MT::parseParameters(const std::vector<std::string> &params)
 			{
 				m_log  = (FILE*)1;
 			}
-			else if (param == "debug")
+			else if (param == "verbose")
 			{
-				m_debug  = true;
+				m_verbose  = true;
 			}
 			else
 			{
 				printError("Switch %s not implemented", param.c_str());
-				return false;
 			}
+		}
+		else if (param[0] == '@')
+		{
+			param = param.substr(1);
+
+			std::string redirect;
+
+			getFileContent(param, redirect);
+
+			if (redirect[0] == (char)0xff && redirect[1] == (char)0xfe)
+			{
+				std::string fixed;
+
+				for(size_t j = 2; j < redirect.size(); ++j)
+				{
+					if (redirect[j] == 0x0d || redirect[j] == 0x0a)
+					{
+						fixed += ' ';
+					}
+					else if (redirect[j] == 0x00)
+					{
+					}
+					else
+					{
+						fixed += redirect[j];
+					}
+				}
+
+				redirect = fixed;
+			}
+
+			split(redirect, params, " ");
 		}
 		else
 		{
@@ -165,7 +196,9 @@ bool MT::parseParameters(const std::vector<std::string> &params)
 					ss >> m_id;
 				}
 
-				if (value.back() == '"' || value.back() == '\'') value = value.substr(0, value.length()-1);
+				pos = value.length()-1;
+
+				if (value[pos] == '"' || value[pos] == '\'') value = value.substr(0, pos);
 
 				m_output = value;
 			}
@@ -182,12 +215,11 @@ bool MT::parseParameters(const std::vector<std::string> &params)
 			else
 			{
 				printError("Unkown %s parameter", value.c_str());
-				return false;
 			}
 		}
 	}
 
-	if (m_debug)
+	if (m_verbose)
 	{
 		std::string res;
 		join(params, res, " ");
@@ -434,7 +466,7 @@ void MT::printError(const char *format, ...)
 
 void MT::printDebug(const char *format, ...)
 {
-	if (!m_debug) return;
+	if (!m_verbose) return;
 
 	static const char *header = "Debug: ";
 	static const char *footer = "\n";
@@ -466,24 +498,11 @@ bool MT::updateManifest(const std::string &output, const std::string &manifest, 
 {
 	printDebug("Opening manifest %s", manifest.c_str());
 
-	std::ifstream ifs(manifest.c_str(), std::ifstream::binary);
+	std::string buffer;
+	
+	if (!getFileContent(manifest, buffer)) return false;
 
-	if (!ifs.is_open())
-	{
-		printError("Can't open manifest %s", manifest.c_str());
-		return false;
-	}
-
-	ifs.seekg(0, std::ios_base::end);
-	uint32_t size = (uint32_t)ifs.tellg();
-
-	ifs.seekg(0, std::ios_base::beg);
-
-	std::auto_ptr<char> buffer(new char[size]);
-
-	ifs.read(buffer.get(), size);
-
-	ifs.close();
+	fixManifest(buffer);
 
 	printDebug("Updating executable %s", output.c_str());
 
@@ -497,7 +516,7 @@ bool MT::updateManifest(const std::string &output, const std::string &manifest, 
 	}
 
 	// Add the manifest to the update list.
-	BOOL result = UpdateResource(hUpdateRes, RT_MANIFEST, MAKEINTRESOURCE(id), MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), buffer.get(), size);
+	BOOL result = UpdateResource(hUpdateRes, RT_MANIFEST, MAKEINTRESOURCE(id), MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), (LPVOID)buffer.c_str(), (DWORD)buffer.length());
 
 	if (result == FALSE)
 	{
@@ -529,7 +548,7 @@ bool MT::hasManifest(const std::string &file, int id)
 	}
 
 	// Locate the manifest resource in the .EXE file
-	HRSRC hRes = FindResourceExA(hExe, RT_MANIFEST, MAKEINTRESOURCE(id), MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL));
+	HRSRC hRes = FindResourceExA(hExe, RT_MANIFEST, MAKEINTRESOURCE(id), MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US));
 
 	if (hRes == NULL)
 	{
@@ -571,4 +590,62 @@ bool MT::processAction()
 	}
 
 	return false;
+}
+
+bool MT::getFileContent(const std::string &filename, std::string &content)
+{
+	std::ifstream ifs(filename.c_str(), std::ifstream::binary);
+
+	if (!ifs.is_open())
+	{
+		printError("Can't open %s", filename.c_str());
+		return false;
+	}
+
+	ifs.seekg(0, std::ios_base::end);
+	size_t size = (size_t)ifs.tellg();
+
+	ifs.seekg(0, std::ios_base::beg);
+
+	std::auto_ptr<char> buffer(new char[size]);
+
+	ifs.read(buffer.get(), size);
+
+	ifs.close();
+
+	content.assign(buffer.get(), size);
+
+	return true;
+}
+
+bool MT::fixManifest(std::string &manifest)
+{
+	std::string::size_type pos;
+
+	// Remove XML header
+	if (manifest.substr(0, 5) == "<?xml")
+	{
+		pos = manifest.find_first_of("\n\r");
+		pos = manifest.find_first_not_of("\n\r", pos);
+
+		manifest = manifest.substr(pos);
+	}
+
+	// Remove spaces at the end
+	pos = manifest.find_last_not_of("\n\r \t");
+
+	if (pos != std::string::npos)
+	{
+		manifest = manifest.substr(0, pos+1);
+	}
+
+	// Replace single by double quotes
+	for(size_t i = 0; i < manifest.size(); ++i)
+	{
+		if (manifest[i] == '\'') manifest[i] = '"';
+	}
+
+	// TODO: replace <tag /> by <tag></tag>
+
+	return true;
 }
