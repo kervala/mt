@@ -1,6 +1,13 @@
 #include "common.h"
 #include "mt.h"
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#ifdef HAVE_REVISION_H
+#include "revision.h"
+#endif
+#endif
+
 #ifdef DEBUG_NEW
 #define new DEBUG_NEW
 #endif
@@ -193,16 +200,14 @@ bool MT::parseParameters(const std::vector<std::string> &params)
 
 void MT::printHeader()
 {
-	printInfo("Kervala (R) Manifest Tool version 1.0");
-	printInfo("Copyright (c) Kervala 2012.");
+	printInfo("Kervala (R) Manifest Tool version %s (rev %s)", VERSION, REVISION);
+	printInfo("Copyright (c) %s %s", AUTHOR, YEAR);
 	printInfo("All rights reserved.");
 	printInfo("");
 }
 
 void MT::printUsage()
 {
-//	printInfo("Syntax: mt.exe -manifest <manifest> -outputresource:\"<executable>;[#]<id>\"");
-
 	printInfo("Usage:");
 	printInfo("-----");
 	printInfo("mt.exe");
@@ -558,8 +563,7 @@ bool MT::processAction()
 			bool before = hasManifest(m_output, m_id);
 			bool res = updateManifest(m_output, m_manifest, m_id ? m_id:1);
 			bool after = hasManifest(m_output, m_id);
-
-			return res && after;
+			return res;
 		}
 
 		default:
