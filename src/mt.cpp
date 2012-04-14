@@ -5,6 +5,11 @@
 #include "config.h"
 #ifdef HAVE_REVISION_H
 #include "revision.h"
+#else
+#define VERSION "1.0"
+#define REVISION "0"
+#define AUTHOR "Kervala"
+#define YEAR "2012"
 #endif
 #endif
 
