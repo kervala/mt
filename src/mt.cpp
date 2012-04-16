@@ -50,14 +50,6 @@ MT::~MT()
 
 bool MT::parseCommandLine(std::vector<std::string> &params, int argc, char* argv[])
 {
-	printHeader();
-
-	if (argc < 2)
-	{
-		m_action = eUsage;
-		return false;
-	}
-
 	for(int i = 1; i < argc; ++i)
 	{
 		params.push_back(argv[i]);
@@ -227,6 +219,8 @@ bool MT::parseParameters(std::vector<std::string> &params)
 		}
 	}
 
+	printHeader();
+
 	if (m_verbose)
 	{
 		std::string res;
@@ -235,11 +229,18 @@ bool MT::parseParameters(std::vector<std::string> &params)
 		printDebug("mt.exe %s", res.c_str());
 	}
 
+	if (params.size() < 1)
+	{
+		printError("Use the /? option for help on usage and samples.");
+	}
+
 	return res;
 }
 
 void MT::printHeader()
 {
+	if (m_nologo) return;
+
 #ifdef REVISION
 	printInfo("Kervala (R) Manifest Tool version %s (rev %s compiled on %s)", VERSION, REVISION, BUILD_DATE);
 #else
@@ -428,8 +429,6 @@ void MT::printUsage()
 
 void MT::printInfo(const char *format, ...)
 {
-	if (m_nologo) return;
-
 	static const char *footer = "\n";
 
 	va_list vl;
@@ -448,8 +447,6 @@ void MT::printInfo(const char *format, ...)
 
 void MT::printError(const char *format, ...)
 {
-	if (m_nologo && m_log == NULL) return;
-
 	static const char *header = "Error: ";
 	static const char *footer = "\n";
 
@@ -468,10 +465,8 @@ void MT::printError(const char *format, ...)
 	{
 		vfprintf(m_log, buffer.get(), vl);
 	}
-	else
-	{
-		vprintf(buffer.get(), vl);
-	}
+
+	vprintf(buffer.get(), vl);
 
 	va_end(vl);
 }
@@ -498,10 +493,8 @@ void MT::printDebug(const char *format, ...)
 	{
 		vfprintf(m_log, buffer.get(), vl);
 	}
-	else
-	{
-		vprintf(buffer.get(), vl);
-	}
+
+	vprintf(buffer.get(), vl);
 
 	va_end(vl);
 }
