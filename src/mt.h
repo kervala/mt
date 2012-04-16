@@ -8,6 +8,7 @@ public:
 	{
 		eNone,
 		eUsage,
+		eFixManifest,
 		eUpdateManifest
 	};
 
@@ -25,6 +26,7 @@ public:
 	void printError(const char *format, ...);
 	void printDebug(const char *format, ...);
 
+	bool fixManifest(const std::string &ouput, const std::string &input);
 	bool updateManifest(const std::string &output, const std::string &manifest, int id = 1);
 	bool hasManifest(const std::string &file, int id = 1);
 
@@ -32,7 +34,9 @@ public:
 
 private:
 	bool getFileContent(const std::string &filename, std::string &content);
-	bool fixManifest(std::string &manifest);
+	bool setFileContent(const std::string &filename, const std::string &content);
+	bool fixManifest(std::string &manifest, bool stripheader);
+	bool fixPEHeader(const std::string &filename);
 
 	bool m_nologo;
 	std::string m_manifest;

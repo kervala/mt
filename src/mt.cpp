@@ -117,6 +117,12 @@ bool MT::parseParameters(std::vector<std::string> &params)
 			else if (param == "outputresource")
 			{
 				m_output = "1";
+				m_action = eUpdateManifest;
+			}
+			else if (param == "out")
+			{
+				m_output = "1";
+				m_action = eFixManifest;
 			}
 			else if (param == "log")
 			{
@@ -174,8 +180,6 @@ bool MT::parseParameters(std::vector<std::string> &params)
 			if (m_manifest == "1")
 			{
 				m_manifest = value;
-
-				m_action = eUpdateManifest;
 			}
 			else if (m_output == "1")
 			{
@@ -267,7 +271,7 @@ void MT::printUsage()
 	printInfo("    [ -check_for_duplicates ]");
 	printInfo("    [ -nologo ]");
 	printInfo("    [ -log:<file> ]");
-	printInfo("    [ -debug ]");
+	printInfo("    [ -verbose ]");
 	printInfo("");
 	printInfo("Options:");
 	printInfo("-------");
@@ -372,7 +376,7 @@ void MT::printUsage()
 	printInfo("");
 	printInfo("-log:<file>                Logs all messages in file instead of displaying them.");
 	printInfo("");
-	printInfo("-debug                     Displays debugging messages.");
+	printInfo("-verbose                   Displays debugging messages.");
 	printInfo("");
 	printInfo("Samples:");
 	printInfo("-------");
@@ -388,7 +392,7 @@ void MT::printUsage()
 	printInfo("");
 	printInfo("> To merge two manifests and finally update the hash to produce the final merged manifest.");
 	printInfo("> Note: The searchpath for the actual files specified in the file elements is specified explicitly.");
-	printInfo("mt.exe -manifest 1.manifest 2.manifest -hashupdate:d:\filerepository -out:merged.manifest");
+	printInfo("mt.exe -manifest 1.manifest 2.manifest -hashupdate:d:\\filerepository -out:merged.manifest");
 	printInfo("");
 	printInfo("> To generate a manifest from an RGS and/or TLB file:");
 	printInfo("mt.exe -rgs:MSClus.rgs -tlb:MSClus.tlb -dll:foo.dll -replacements:replacements.manifest -identity:\"type=win32, name=Microsoft.Tools.SampleAssembly, version=6.0.0.0, processorArchitecture=x86, publicKeyToken=6595b64144ccf1df\" -out:rgstlb.manifest");
@@ -407,10 +411,10 @@ void MT::printUsage()
 	printInfo("mt.exe -inputresource:dll_with_manifest.dll;#1 -manifest 2.manifest -outputresource:dll_with_merged_manifest.dll;#3");
 	printInfo("");
 	printInfo("> To update the manifest in a PE's resource (by updating the hashes of the file elements):");
-	printInfo("mt.exe -updateresource:dll_with_manifest.dll;#1 -hashupdate:f:\files");
+	printInfo("mt.exe -updateresource:dll_with_manifest.dll;#1 -hashupdate:f:\\files");
 	printInfo("");
 	printInfo("> To validate the hash values of all the file elements:");
-	printInfo("mt.exe -manifest 1.manifest -validate_file_hashes:\"c:\files\"");
+	printInfo("mt.exe -manifest 1.manifest -validate_file_hashes:\"c:\\files\"");
 	printInfo("");
 	printInfo("> To validate a manifest (i.e., to see if it conforms to the manifest schema):");
 	printInfo("mt.exe -manifest 1.manifest -validate_manifest");
@@ -502,6 +506,19 @@ void MT::printDebug(const char *format, ...)
 	va_end(vl);
 }
 
+bool MT::fixManifest(const std::string &output, const std::string &input)
+{
+	std::string buffer;
+	
+	if (!getFileContent(input, buffer)) return false;
+
+	if (!fixManifest(buffer, false)) return false;
+
+	if (!setFileContent(output, buffer)) return false;
+
+	return true;
+}
+
 bool MT::updateManifest(const std::string &output, const std::string &manifest, int id)
 {
 	printDebug("Opening manifest %s", manifest.c_str());
@@ -510,7 +527,7 @@ bool MT::updateManifest(const std::string &output, const std::string &manifest, 
 	
 	if (!getFileContent(manifest, buffer)) return false;
 
-	fixManifest(buffer);
+	if (!fixManifest(buffer, true)) return false;
 
 	printDebug("Updating executable %s", output.c_str());
 
@@ -588,6 +605,9 @@ bool MT::processAction()
 		printUsage();
 		return true;
 
+		case eFixManifest:
+		return fixManifest(m_output, m_manifest);
+
 		case eUpdateManifest:
 		{
 			bool before = hasManifest(m_output, m_id);
@@ -629,12 +649,28 @@ bool MT::getFileContent(const std::string &filename, std::string &content)
 	return true;
 }
 
-bool MT::fixManifest(std::string &manifest)
+bool MT::setFileContent(const std::string &filename, const std::string &content)
+{
+	std::ofstream ofs(filename.c_str(), std::ifstream::binary);
+
+	if (!ofs.is_open())
+	{
+		printError("Can't open %s", filename.c_str());
+		return false;
+	}
+
+	ofs.write(content.c_str(), content.size());
+	ofs.close();
+
+	return true;
+}
+
+bool MT::fixManifest(std::string &manifest, bool stripheader)
 {
 	std::string::size_type pos;
 
 	// Remove XML header
-	if (manifest.substr(0, 5) == "<?xml")
+	if (stripheader && manifest.substr(0, 5) == "<?xml")
 	{
 		pos = manifest.find_first_of("\n\r");
 		pos = manifest.find_first_not_of("\n\r", pos);
