@@ -8,6 +8,8 @@
 #include <memory>
 #include <vector>
 #include <sstream>
+#include <psapi.h>
+#include <imagehlp.h>
 
 #if defined(_MSC_VER) && defined(_DEBUG)
 	#define _CRTDBG_MAP_ALLOC

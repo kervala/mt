@@ -612,6 +612,7 @@ bool MT::processAction()
 		{
 			bool before = hasManifest(m_output, m_id);
 			bool res = updateManifest(m_output, m_manifest, m_id ? m_id:1);
+//			fixPEHeader(m_output);
 			bool after = hasManifest(m_output, m_id);
 			return res;
 		}
@@ -695,4 +696,103 @@ bool MT::fixManifest(std::string &manifest, bool stripheader)
 	// TODO: replace <tag /> by <tag></tag>
 
 	return true;
+}
+
+bool MT::fixPEHeader(const std::string &filename)
+{
+    bool res = false;
+      
+    HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+
+	if (hFile != INVALID_HANDLE_VALUE)
+	{
+		HANDLE hMapping = CreateFileMapping(hFile, NULL, PAGE_READWRITE, 0, 0, NULL);
+
+		if (hMapping)
+		{
+			PVOID pvMap = MapViewOfFile(hMapping, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
+
+			if (pvMap)
+			{
+				PIMAGE_NT_HEADERS pHeader = ImageNtHeader(pvMap);
+
+				if (pHeader)
+				{
+					// Sections where the section header SizeOfRawData field is zero contain
+					// only uninitialized data.
+					//
+					// Look for sections that have SizeOfRawData == 0, and PointerToRawData !=0.
+					//
+					ULONG NumberOfSections = pHeader->FileHeader.NumberOfSections;
+					ULONG OffsetToSectionTable = FIELD_OFFSET (IMAGE_NT_HEADERS, OptionalHeader) + pHeader->FileHeader.SizeOfOptionalHeader;
+
+					PIMAGE_SECTION_HEADER SectionTableEntry = (PIMAGE_SECTION_HEADER)((PCHAR)pHeader + OffsetToSectionTable);
+
+					while (NumberOfSections > 0)
+					{
+						//
+						// Where the SizeOfRawData is zero, but the PointerToRawData is not
+						// zero, set PointerToRawData to zero.
+						//
+						if ((SectionTableEntry->SizeOfRawData == 0) && (SectionTableEntry->PointerToRawData != 0))
+						{
+							SectionTableEntry->PointerToRawData = 0;
+						}
+
+						SectionTableEntry += 1;
+						NumberOfSections -= 1;
+					}
+
+					//
+					// Update the OptionalHeader.CheckSum field.
+					//
+					DWORD cbFileSize = GetFileSize(hFile, NULL);
+
+					if(cbFileSize != INVALID_FILE_SIZE)
+					{
+						DWORD dwPriorCheckSum = 0;
+						DWORD dwNewCheckSum = 0;
+
+						if (CheckSumMappedFile(pvMap, cbFileSize, &dwPriorCheckSum, &dwNewCheckSum))
+						{
+							pHeader->OptionalHeader.CheckSum = dwNewCheckSum;
+							res = true;
+						}
+					}
+				}
+
+				UnmapViewOfFile(pvMap);
+			}
+
+			CloseHandle(hMapping);
+		}
+
+		CloseHandle(hFile);
+	}
+
+	if(!res)
+	{
+		DWORD dwLastError = GetLastError();
+
+		char *szErrText = NULL;
+		BOOL fFreeError = TRUE;
+
+		if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL,
+							dwLastError, 0,	(char *)&szErrText, 16, NULL) == 0)
+		{
+			szErrText = "Unknown error";
+			fFreeError = FALSE;
+		}
+
+		printf("%s: Can't open file error %x: %s\n", filename.c_str(), dwLastError, szErrText);
+        
+		if(fFreeError)
+		{
+			LocalFree(szErrText);
+		}
+
+		SetLastError(dwLastError);
+	}
+
+    return res;
 }
