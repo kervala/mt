@@ -79,7 +79,7 @@ bool MT::parseParameters(std::vector<std::string> &params)
 		std::string value;
 
 		// switch
-		if (param[0] == '-' || param[0] == '/')
+		if (param[0] == '-' || (param[0] == '/' && m_log != (FILE*)1))
 		{
 			param = param.substr(1);
 
