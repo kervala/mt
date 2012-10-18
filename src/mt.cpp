@@ -209,6 +209,7 @@ bool MT::parseParameters(std::vector<std::string> &params)
 				{
 					printError("Unable to access to %s", value.c_str());
 					res = false;
+					m_log = NULL;
 				}
 			}
 			else
@@ -603,10 +604,10 @@ bool MT::processAction()
 
 		case eUpdateManifest:
 		{
-			bool before = hasManifest(m_output, m_id);
+//			bool before = hasManifest(m_output, m_id);
 			bool res = updateManifest(m_output, m_manifest, m_id ? m_id:1);
 //			fixPEHeader(m_output);
-			bool after = hasManifest(m_output, m_id);
+//			bool after = hasManifest(m_output, m_id);
 			return res;
 		}
 
