@@ -69,6 +69,17 @@ bool MT::parseEnv(std::vector<std::string> &params, const char *name)
 	return true;
 }
 
+/*
+	/nologo /out:<manifest> /notify_update /manifest <temp_manifest>
+	/nologo /manifest bin\kmt.exe.manifest /outputresource:bin\kmt.exe;#1
+
+	if mt returns 0, then the manifest was not changed and we do not need to do another link step
+	check for magic mt return value if mt returns the magic number
+	1090650113 then it means that it updated the manifest file and we need
+	to do the final link.  If mt has any value other than 0 or 1090650113
+	then there was some problem with the command itself and there was an
+	error so return the error code back out of cmake so make can report it.
+*/
 bool MT::parseParameters(std::vector<std::string> &params)
 {
 	bool res = true;
