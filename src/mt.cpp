@@ -135,6 +135,10 @@ bool MT::parseParameters(std::vector<std::string> &params)
 			{
 				m_verbose  = true;
 			}
+			else if (param == "notify_update")
+			{
+				// TODO: what?
+			}
 			else
 			{
 				printError("Unexpected/Unknown option \"-%s\".  Use the /? option for help on usage and samples.", param.c_str());
