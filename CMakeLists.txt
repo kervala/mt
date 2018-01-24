@@ -6,7 +6,7 @@ INCLUDE(common OPTIONAL)
 
 IF(NOT COMMON_MODULE_FOUND)
   MESSAGE(FATAL_ERROR "Unable to find common.cmake! Please place it in CMakeModules subdirectory, set CMAKE_MODULE_PATH environement variable or set CMAKE_MODULE_PATH parameter to CMake.")
-ENDIF(NOT COMMON_MODULE_FOUND)
+ENDIF()
 
 SET(VERSION_MAJOR 1)
 SET(VERSION_MINOR 0)
@@ -16,7 +16,7 @@ SET(PRODUCT "Kervala MT")
 SET(DESCRIPTION "Microsoft mt.exe clone for WINE")
 SET(TARGET_ICON "kmt.ico")
 SET(TARGET "kmt")
-SET(YEAR "2012")
+SET(YEAR "2012-${CURRENT_YEAR}")
 
 PROJECT(${PRODUCT} CXX C)
 
@@ -47,7 +47,7 @@ TARGET_LINK_LIBRARIES(${TARGET} Imagehlp)
 
 IF(WITH_PCH)
   ADD_NATIVE_PRECOMPILED_HEADER(${TARGET} ${CMAKE_CURRENT_SOURCE_DIR}/src/common.h ${CMAKE_CURRENT_SOURCE_DIR}/src/common.cpp)
-ENDIF(WITH_PCH)
+ENDIF()
 
 # WMIC
 SET(PRODUCT "Kervala WMIC")
